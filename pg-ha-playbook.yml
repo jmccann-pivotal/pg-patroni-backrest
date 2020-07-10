@@ -1,0 +1,56 @@
+--- 
+
+- hosts: all
+  become: yes
+  gather_facts: true
+  ignore_errors: false
+  roles:
+     - role: os-update
+       tags: osupdate
+     - role: os-packages
+       tags: ospackages
+
+- hosts: databasegroup
+  become: yes
+  gather_facts: true
+  ignore_errors: true
+  roles:
+     - role: patroni-packages
+       tags: patronipkg
+     - role: install-dcs
+       tags: installetcd
+     - role: install-pivotal-postgres
+       tags: installpg
+     - role: install-postgis
+       tags: initpostgis
+
+- hosts: haproxygroup
+  become: yes
+  gather_facts: true
+  ignore_errors: false
+  roles:
+     - role: install-haproxy
+       tags: installhaproxy
+
+- hosts: dbmaster
+  become: yes
+  gather_facts: true
+  roles:
+     - role: install-patroni-master
+       tags: patronimstr
+
+- hosts: dbreplica
+  become: yes
+  gather_facts: true
+  roles:
+     - role: install-patroni-replica
+       tags: patronireplica
+
+- hosts: haproxygroup
+  become: yes
+  gather_facts: true
+  vars:
+     - flag: 1
+  roles:
+     - role: update-haproxy
+       tags: updateproxy
