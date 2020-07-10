@@ -1,0 +1,67 @@
+---
+# vars file for pivotal postgres
+
+# this is the location where the pivotal postgres rpm resides
+# you should not need to modify this
+
+ppg:  /tmp/vmware-postgres-11.7-3.el7.x86_64.rpm
+
+# set this flag to 1 if you are adding a disk for PGDATA
+# set to 0 if you are going to use the default /var/lib/pgsql location for data
+
+add_disk: 1
+
+# if add_disk = 1, disk_list will format and mount one or more devices
+#
+# mount_point is the location where PGDATA will go if add_disk = 1
+# device_raw  - /dev/<device> to be formatted
+# device_formatted  - device name after formatting
+
+disk_list:
+    - { mount_point: "/data1", device_raw: "/dev/xvdb", device_formatted: "/dev/xvdb1" }
+#    - { mount_point: "/logs", device_raw: "/dev/xvdc", device_formatted: "/dev/xvdc1" }
+
+# if add_disk == 1, but the disks have already been created and mounted,
+# this flag just ensures the mount point directory owner/group is postgres
+# set to true if the disks are already in place and make sure all the mount
+# points are in the disk_list above.  Set to false to have ansible format
+# and mount the disks/filesytems.
+
+only_change_disk_permissions: false
+
+# amazon default for EBS volumes is /dev/xvdb or /dev/nvme1n1
+# google default /dev/sdb
+
+# amazon default: /dev/xvdb1 or /dev/nvme1n1p1
+# gcp default: /dev/sdb1
+
+
+# this is for Patroni use.
+# If True, this will put etcd on the haproxy server
+# If False, this will put etcd on all database servers
+
+use_external_dcs: False
+
+
+# This is where you build the postgres configuration details for Patroni.
+# Also used for single instance.
+#
+# name:   A unique name for the postgres/patroni instance
+#         This will also be appended to the data directory name.
+# primary_port: The postgres port to connect to.  Also the haproxy primary port
+#               Generally starts at 5432
+# replica_port: For HAproxy connections to read only instances
+# patroni_port: The port that patroni talks to etcd with.  Must be unique per
+#               instance.  Generally starts at 8008
+# datadir_parent:  The parent where data and backup directories will be 
+#                  located.  Data and backup directories will have the 
+#                  naming convention:  data_<name> and backup_<name> where
+#                  <name> is the name of the instance. Postgres default is
+#                  /var/lib/pgsql/ with directories data and backups there.
+#                  Change to your named location if using new disk
+#
+# You can only build one instance.  Just use the pound sign
+# to comment or uncomment items.
+
+postgresql_cluster:
+    - { name: "prod", primary_port: "5432", replica_port: "5433", patroni_port: "8008", datadir_parent: "/data1" }
