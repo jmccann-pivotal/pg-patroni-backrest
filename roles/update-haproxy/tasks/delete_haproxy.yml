@@ -1,0 +1,11 @@
+# now fix the haproxy.cfg file on the haproxy host
+
+# remove haproxy entries for this instance
+
+- name:  Remove haproxy entries
+  blockinfile:
+       dest: /etc/haproxy/haproxy.cfg
+       marker: "# {mark} postgres_{{ item.name }}"
+       block: ""
+  loop: "{{ postgresql_cluster }}"
+

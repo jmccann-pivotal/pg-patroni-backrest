@@ -1,0 +1,7 @@
+---
+# tasks file for postgres-install
+
+- include_tasks: install-postgres-software.yml
+   
+- include_tasks:  add-disks.yml
+  when: add_disk == 1

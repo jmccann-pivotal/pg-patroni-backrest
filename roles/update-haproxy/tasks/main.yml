@@ -1,0 +1,16 @@
+---
+# tasks file for update-haproxy
+
+- name: add text to haproxy.cfg
+  include_tasks: update_haproxy.yml
+  loop: "{{ postgresql_cluster }}"
+  when: flag == 1
+
+- name: delete text from haproxy.cfg
+  include_tasks: delete_haproxy.yml
+  when: flag == 2
+
+- name: restart haproxy
+  include_tasks: restart_haproxy.yml
+  
+

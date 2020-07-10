@@ -1,0 +1,27 @@
+---
+# tasks file for haproxy
+
+- name: Disable SELinux
+  selinux:
+       state: disabled
+
+- name: add etcd
+  include_role:
+   name: install-dcs
+  when: use_external_dcs == true
+
+- name:
+  yum:
+   name: haproxy
+   state: installed
+   update_cache: yes
+
+- name: Install haproxy.cfg file
+  template:
+       src: templates/haproxy.cfg
+       dest: /etc/haproxy/haproxy.cfg
+       owner: root
+       group: root
+       mode: 0644
+  notify:
+       - restart haproxy

@@ -1,0 +1,4 @@
+---
+# tasks file for os-upgrade
+
+- include_tasks: os-update.yml

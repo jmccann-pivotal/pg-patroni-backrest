@@ -1,0 +1,17 @@
+
+- name: Install basic packages
+  yum:
+    name:
+      - gcc
+      - python3
+      - python3-devel
+    state: latest
+    update_cache: yes
+
+- name: Install epel-release 
+  yum:
+    name:
+      - epel-release
+    state: latest
+    update_cache: yes
+

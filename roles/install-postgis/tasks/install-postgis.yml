@@ -1,0 +1,21 @@
+---
+
+# steps to install postgis correctly with vmware-postgres
+
+# copy the file to the postgres host
+
+- name: copy postgis file to host
+  copy:
+    src: vmware-postgres-postgis-extension-11.7-3.el7.x86_64.rpm
+    dest: /tmp
+    owner: root
+    mode: 0755
+
+# install the postgis extension
+
+- name: install postgis extension
+  yum:
+    name: /tmp/vmware-postgres-postgis-extension-11.7-3.el7.x86_64.rpm
+    state: installed
+  
+# extension is installed

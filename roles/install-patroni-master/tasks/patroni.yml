@@ -1,0 +1,138 @@
+
+
+# insure directories are empty before starting
+
+#- name: Insure directories are empty
+#  file:
+#     path: "{{ item }}"
+#     state: absent
+#  with_items::
+#     - "{{ item.datadir_parent }}/data_{{ item.name }}"
+#     - "{{ item.datadir_parent }}/backups_{{ item.name }}"
+#     - "/var/log/{{ item.name }}"
+
+
+- name: Create data directory
+  file:
+     path:  "{{ item.datadir_parent }}/data_{{ item.name }}"
+     state: directory
+     owner: postgres
+     group: postgres
+     mode: '0700'
+  loop:  "{{ postgresql_cluster }}"
+
+- name: Create backup directory
+  file:
+     path:  "{{ item.datadir_parent }}/backups_{{ item.name }}"
+     state: directory
+     owner: postgres
+     group: postgres
+     mode: '0770'
+  loop:  "{{ postgresql_cluster }}"
+
+- name: Create log directory
+  file:
+     path: "/var/log/patroni_{{ item.name }}"
+     state: directory
+     owner: postgres
+     group: postgres
+     mode: '0775'
+  loop:  "{{ postgresql_cluster }}"
+
+- name:  Install patroni service file
+  template:
+     src: patroni_service.j2
+     dest: /etc/systemd/system/patroni_{{ item.name  }}.service
+     owner: root
+     group: root
+     mode: '0644'
+  loop:  "{{ postgresql_cluster }}"
+
+- name: Build patroni YAML file
+  template:
+     src: patroni_yml.j2
+     dest: "/etc/patroni_{{ item.name }}.yml"
+     owner: postgres
+     group: postgres
+     mode: 0644
+  loop:  "{{ postgresql_cluster }}"
+
+- name: Build pgbackrest.conf
+  template:
+     src: pgbackrest_master.j2
+     dest: /etc/pgbackrest.conf
+     owner: postgres
+     group: postgres
+     mode: 0755
+  loop:  "{{ postgresql_cluster }}"
+
+
+#- fail: msg="{{ hostvars['groups'] }}"
+#- fail: msg="{{ ansible_host }}"
+#- fail: msg="{{ hostvars[groups['controlgroup'][0]]['ansible_host'] }}"
+#- fail: msg="{{ hostvars[inventory_hostname]['ansible_default_ipv4']['address'] }}"
+
+
+- name: set PGDATA from profile if needed
+  become: yes
+  become_user: postgres
+  lineinfile:
+         path: /var/lib/pgsql/.bash_profile
+         regexp: "PGDATA"
+         state:  present
+         line: "PGDATA={{ item.datadir_parent }}/data_{{ item.name }}"
+  loop: "{{ postgresql_cluster }}"
+
+- name:  Add postgres permissions to sudoers.d/postgres
+  blockinfile:
+     create: yes
+     insertafter: EOF
+     dest: /etc/sudoers.d/postgres
+     marker:  "# {mark} postgres_{{ item.name }}"
+     block: |
+             %postgres ALL=NOPASSWD: /bin/systemctl start patroni_{{ item.name }}
+             %postgres ALL=NOPASSWD: /bin/systemctl restart patroni_{{ item.name  }}
+             %postgres ALL=NOPASSWD: /bin/systemctl stop patroni_{{ item.name }}
+  loop: "{{ postgresql_cluster }}"
+
+- name: Insure etcd is up
+  systemd:
+     name: etcd
+     state: restarted
+     enabled: yes
+     daemon_reload: yes
+  when: use_external_dcs == False
+
+- name: Start patroni
+  systemd:
+     name: "patroni_{{ item.name  }}"
+     state: started
+     enabled: yes
+     daemon_reload: yes
+  loop:  "{{ postgresql_cluster }}"
+
+- name: copy pc script to /usr/local/bin for easier patronictl work
+  template:
+    src: pc.j2
+    dest: /usr/local/bin/pc
+    owner: postgres
+    group: postgres
+    mode: '0775'
+    force: yes
+
+- name: copy hba_proto file to postgres user directory for edit-config
+  template:
+    src: hba_proto.j2
+    dest: /var/lib/pgsql/hba_proto.txt
+    owner: postgres
+    group: postgres
+    mode: '0755'
+    force: no
+
+- name: set up default psqlrc file
+  copy:
+     src: psqlrc
+     dest: /var/lib/pgsql/.psqlrc
+     owner: postgres
+     group: postgres
+     mode: '0755'

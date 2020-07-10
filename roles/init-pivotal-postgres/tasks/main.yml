@@ -1,0 +1,4 @@
+---
+# tasks file for init-pivotal-postgres
+
+- include_tasks: init-postgres.yml

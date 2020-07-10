@@ -1,0 +1,126 @@
+# use this file for testing with small instances.
+# copy, in this directory, to patroni_yml.j2
+scope: {{ item.name }}
+name: {{ inventory_hostname }}
+
+log:
+    dir: /var/log/patroni_{{ item.name }}
+    level: 10
+    file_num: 8
+    file_size: 1024000
+
+restapi:
+    listen: "{{ hostvars[inventory_hostname]['ansible_default_ipv4']['address'] }}:{{ item.patroni_port }}"
+    connect_address: "{{ hostvars[inventory_hostname]['ansible_default_ipv4']['address'] }}:{{ item.patroni_port }}"
+
+# Using Andreas's settings for this section
+# removed the is defined clause - not working
+
+{% if use_external_dcs == True  %}
+etcd:
+    host: {{ hostvars[groups['haproxygroup'][0]]['ansible_default_ipv4']['address'] }}:2379
+{% else %}
+etcd:
+    hosts: {% for host in groups['databasegroup'] %}{{ hostvars[host]['ansible_default_ipv4']['address'] }}:2379{% if not loop.last %},{% endif %}{% endfor %}
+{% endif %}
+
+
+#
+# Postgres parameters are set to defaults, change if needed
+#
+
+bootstrap:
+    dcs:
+        ttl: 30
+        loop_wait: 10
+        retry_timeout: 10
+        maximum_lag_on_failover: 1048576
+        postgresql:
+            use_pg_rewind: true
+            parameters:
+               cluster_name: {{ item.name }}
+               wal_level: replica
+               archive_mode: "on"
+               hot_standby: "on"
+               wal_keep_segments: 10
+               max_wal_senders: 5
+               wal_log_hints: "on" 
+               archive_command: "pgbackrest --stanza={{ item.name }} archive-push '%p'"
+               shared_buffers: 128MB
+               effective_cache_size: 128MB
+               maintenance_work_mem: 64MB
+               work_mem: 4MB
+               max_worker_processes: 4
+               max_parallel_workers_per_gather: 4
+               max_parallel_workers: 4
+               wal_buffers: -1
+               min_wal_size: 80MB
+               max_wal_size: 1GB
+               default_statistics_target: 500
+               random_page_cost: 1.1
+               checkpoint_completion_target: 0.9
+               max_connections: 50
+               max_locks_per_transaction: 128
+               effective_io_concurrency: 2
+               checkpoint_timeout: 5 min
+               logging_collector: on
+               log_destination: "csvlog"
+               log_directory: "pg_log"
+               log_filename: "server_log.%a"
+               log_truncate_on_rotation: on
+               log_rotation_age: 1440
+            recovery_conf:
+               restore_command:  '/usr/bin/pgbackrest --stanza={{ item.name }} archive-get %f "%p"'
+               recovery_target_timeline: latest
+    initdb:
+    - encoding: UTF8
+    - data-checksums
+
+    pg_hba:
+    - local postgres  postgres trust
+    - host all postgres 0.0.0.0/0 trust
+    - host replication replicator 127.0.0.1/32 md5
+{% for host in groups['databasegroup'] %}
+    - host all postgres  {{ hostvars[host]['ansible_default_ipv4']['address'] }}/32 trust
+{% endfor %}
+{% for host in groups['databasegroup'] %}
+    - host replication replicator {{ hostvars[host]['ansible_default_ipv4']['address'] }}/32 md5
+{% endfor %}
+{% for host in groups['haproxygroup'] %}
+    - host all all {{ hostvars[host]['ansible_default_ipv4']['address'] }}/32 md5
+{% endfor %}
+    - host all all 0.0.0.0/0 md5
+
+    users:
+        admin:
+            password: changeme
+            options:
+                - createrole
+                - createdb
+
+postgresql:
+    listen: {{ hostvars[inventory_hostname]['ansible_default_ipv4']['address'] }}:{{ item.primary_port }}
+    bin_dir: /usr/bin
+    connect_address: {{ hostvars[inventory_hostname]['ansible_default_ipv4']['address'] }}:{{ item.primary_port }}
+    data_dir: {{ item.datadir_parent}}/data_{{ item.name }}
+    pgpass: /var/lib/pgsql/.pgpass_{{  item.name }}
+    authentication:
+        replication:
+            username: replicator
+            password: replicator
+        superuser:
+            username: postgres
+            password: P1v0tal1
+    parameters:
+         unix_socket_directories: '/tmp'
+#        synchronous_commit: "on"
+#        synchronous_standby_names: "*"
+    recovery_conf:
+        restore_command:  "/usr/bin/pgbackrest --stanza={{ item.name }} archive-get %f '%p'"
+        recovery_target_timeline: latest
+
+tags:
+    nofailover: false
+    noloadbalance: false
+    clonefrom: false
+    nosync: false

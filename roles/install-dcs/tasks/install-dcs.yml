@@ -1,0 +1,89 @@
+- name: Install etcd package
+  yum:
+    name: "{{ item }}"
+    state: latest
+    update_cache: yes
+  loop:
+    - etcd
+
+- name:  stop etcd if running JM
+  systemd:
+    name: etcd
+    state: stopped
+
+- name: Remove any existing etcd clusters JM
+  file: 
+    path: /var/lib/etcd/
+    state: absent
+
+- name: Insure /var/lib/etcd exists JM
+  file:
+    path:  /var/lib/etcd
+    state: directory
+    owner: etcd
+    group: etcd
+    mode:  u=rwx,g=rx,o=rx
+
+- name: Build list of all IP addresses from databasegroup - JM
+  set_fact:
+    grplist: "{{ groups['databasegroup'] | map('extract', hostvars, \
+              ['ansible_default_ipv4', 'address']) | \ 
+              map('regex_replace', '^','http://')  | \
+              map('regex_replace', '$', ':2380') | list }}"
+    register: grplist
+  when: use_external_dcs == False
+
+- name: build list of IP addresses from haproxygroup
+  set_fact:
+    grplist: "{{ groups['haproxygroup'] | map('extract', hostvars, \
+              ['ansible_default_ipv4', 'address']) | \ 
+              map('regex_replace', '^','http://')  | \
+              map('regex_replace', '$', ':2380') | list }}"
+    register: grplist
+  when: use_external_dcs == True
+
+# add etcd_id to host list to identify the hosts for etcd cluster
+- name: Build IP string for inital cluster JM
+  set_fact:
+    grpstr: "{{ grpstr + 'etcd' + my_idx|string  + '=' + item + ',' }}"
+  loop: "{{  grplist }}"
+  loop_control:
+    index_var: my_idx
+  register: grpstr
+
+- name: clean IP String JM
+  set_fact:
+    cgrpstr: "{{ grpstr | regex_replace(',$','') }}"
+
+- name: Set default IP address, modified by JM
+  set_fact:
+    default_control_ipv4: "{{ hostvars[inventory_hostname]['ansible_default_ipv4']['address'] }}"
+
+- name: Set hostname
+  set_fact:
+    hoststr: "{{ hostvars[inventory_hostname]['etcd_id'] }}"
+
+- name: Modify etcd.conf
+  lineinfile:
+    dest: /etc/etcd/etcd.conf
+    regexp: "{{ item.regexp }}"
+    line: "{{ item.line }}"
+    state: "{{ item.state }}"
+    backrefs: yes
+  with_items:
+     - { regexp: "^#*ETCD_LISTEN_PEER_URLS=", line: 'ETCD_LISTEN_PEER_URLS="http://{{ default_control_ipv4 }}:2380"', state: present } 
+     - { regexp: "^#*ETCD_LISTEN_CLIENT_URLS=", line: 'ETCD_LISTEN_CLIENT_URLS="http://127.0.0.1:2379,http://{{ default_control_ipv4 }}:2379"', state: present }
+     - { regexp: "^#*ETCD_NAME=", line: 'ETCD_NAME="{{ hoststr }}"', state: present }
+     - { regexp: "^#*ETCD_INITIAL_ADVERTISE_PEER_URLS=", line: 'ETCD_INITIAL_ADVERTISE_PEER_URLS=http://{{ default_control_ipv4 }}:2380', state: present }
+     -  { regexp: "^#*ETCD_ADVERTISE_CLIENT_URLS=", line: 'ETCD_ADVERTISE_CLIENT_URLS=http://{{ default_control_ipv4 }}:2379', state: present }
+     - { regexp: "^#*ETCD_INITIAL_CLUSTER=", line: 'ETCD_INITIAL_CLUSTER="{{ cgrpstr }}"', state: present } 
+     - { regexp: "^#*ETCD_INITIAL_CLUSTER_TOKEN=", line: 'ETCD_INITIAL_CLUSTER_TOKEN="cluster1"', state: present }
+     - { regexp: "^#*ETCD_INITIAL_CLUSTER_STATE=", line: 'ETCD_INITIAL_CLUSTER_STATE="new"', state: present }
+     - { regexp: "^#*ETCD_ENABLE_V2=", line: 'ETCD_ENABLE_V2="true"', state: present }
+
+- name: restart etcd
+  systemd:
+      name: etcd
+      state: restarted
+      daemon_reload: yes
+      enabled: yes

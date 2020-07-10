@@ -1,0 +1,40 @@
+---
+
+  - block:   
+
+    - when:  add_disk == 0
+      block:
+        - name: Not adding disk 
+          debug:
+            msg: No Disks to add   
+
+    - when: add_disk == 1
+      block:
+
+        - name: Let user know we are adding disk
+          debug:
+             msg: Adding Device to Current Host
+    
+        - name: Format device
+          parted:
+             device: "{{ device_raw }}"
+             number: 1
+             state: present
+    
+        - name: Build the filesystem
+          filesystem: 
+              fstype: xfs
+              dev: "{{ device_formatted }}"
+    
+        - name: Create Mount Point
+          file:
+              path: "{{ mount_point }}"
+              state: directory
+              mode: '0755'
+    
+        - name: Mount the new device
+          mount:
+              path: "{{ mount_point }}"
+              src:  "{{ device_formatted }}"
+              fstype: xfs
+              state: mounted

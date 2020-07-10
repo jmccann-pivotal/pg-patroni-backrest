@@ -1,0 +1,8 @@
+        - name: Change ownership of Mount Points
+          file:
+              path: "{{ item.mount_point }}"
+              state: directory
+              mode: '0755'
+              owner: postgres
+              group: postgres
+          with_items: "{{ disk_list }}"

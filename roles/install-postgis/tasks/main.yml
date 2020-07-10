@@ -1,0 +1,4 @@
+---
+# tasks file for install-postgis
+
+- include_tasks: install-postgis.yml

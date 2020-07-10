@@ -1,0 +1,10 @@
+---
+# tasks file for etcd
+
+- name:  See if etcd is already installed
+  stat:
+    path: /etc/etcd/etcd.conf
+  register: etcd_installed
+
+- include_tasks: install-dcs.yml
+  when: etcd_installed.stat.exists == False

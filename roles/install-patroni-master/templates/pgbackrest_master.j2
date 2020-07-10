@@ -1,0 +1,21 @@
+[{{ item.name }}]
+pg1-path={{ item.datadir_parent }}/data_{{ item.name }}
+
+[global]
+process-max=4
+log-level-console=info
+log-level-file=debug
+log-path={{ item.datadir_parent }}/backups_{{ item.name }}
+repo1-path={{ item.datadir_parent }}/backups_{{ item.name }}
+repo1-retention-diff=2
+repo1-retention-full=2
+repo1-s3-bucket=<your bucket>
+repo1-s3-endpoint=s3.us-east-1.amazonaws.com
+repo1-s3-key= ***
+repo1-s3-key-secret= ***
+repo1-s3-region=us-east-1
+repo1-type=s3
+start-fast=y
+
+[global:archive-push]
+compress-level=3

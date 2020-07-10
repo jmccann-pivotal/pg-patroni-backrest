@@ -1,0 +1,14 @@
+---
+
+- block:
+
+  - name: build haproxy.cfg addition
+    template:
+        src: haproxy_upd.cfg
+        dest: /tmp/haproxy_upd.txt
+
+  - name: update haproxy.cfg
+    shell:  cat /tmp/haproxy_upd.txt >> /etc/haproxy/haproxy.cfg
+
+
+

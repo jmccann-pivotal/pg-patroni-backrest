@@ -1,0 +1,13 @@
+  pg_hba:
+    - local postgres  postgres trust
+    - host replication replicator 127.0.0.1/32 md5
+{% for host in groups['databasegroup'] %}
+    - host all postgres  {{ hostvars[host]['ansible_default_ipv4']['address'] }}/32 trust
+{% endfor %}
+{% for host in groups['databasegroup'] %}
+    - host replication replicator {{ hostvars[host]['ansible_default_ipv4']['address'] }}/32 md5
+{% endfor %}
+{% for host in groups['haproxygroup'] %}
+    - host all all {{ hostvars[host]['ansible_default_ipv4']['address'] }}/32 md5
+{% endfor %}
+    - host all all 0.0.0.0/0 md5

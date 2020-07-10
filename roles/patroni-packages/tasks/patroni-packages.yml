@@ -1,0 +1,27 @@
+# separate step, because "epel-release" needs to be available first
+- name: Install python3-pip package
+  yum:
+     name:
+      - python3-pip
+     state: latest
+     update_cache: yes
+
+- name: Upgrade pip setuptools
+  command: pip3 install --upgrade setuptools
+
+- name: Remove Pivotal Postgre Patroni
+  file:
+     path: /bin/patroni
+     state: absent
+
+# install latest patroni and support files
+
+- name: Install psycopg2-binary
+  command: pip3 install psycopg2-binary
+
+- name: Install patroni
+  command: pip3 install patroni[etcd]
+
+- name: Install python-etcd
+  command: pip3 install python-etcd
+

@@ -1,0 +1,9 @@
+---
+# tasks file for patroni
+
+- name: add etcd
+  include_role:
+   name: install-dcs
+  when: use_external_dcs == false
+
+- include_tasks: patroni.yml

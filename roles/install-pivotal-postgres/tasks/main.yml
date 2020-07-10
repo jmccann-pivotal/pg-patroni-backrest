@@ -1,0 +1,11 @@
+---
+# tasks file for postgres-install
+
+- include_tasks: install-postgres-software.yml
+   
+- include_tasks:  add-disks.yml
+  when: add_disk == 1
+
+# do this regardless whether disks are there or not
+- include_tasks:  change-dir-owner.yml
+  when: add_disk == 1

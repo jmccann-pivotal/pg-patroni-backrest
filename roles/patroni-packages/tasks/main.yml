@@ -1,0 +1,4 @@
+---
+# tasks file for patroni-packages
+
+- include_tasks: patroni-packages.yml

@@ -1,0 +1,53 @@
+---
+
+  - block:   
+
+    - when:  add_disk == 0
+      block:
+        - name: Not adding disk 
+          debug:
+            msg: No Disks to add   
+
+    - when: add_disk == 1
+      block:
+
+        - name: Let user know we are adding disk
+          debug:
+             msg: Adding Devices to Current Host
+    
+        - name: Format device
+          parted:
+             device: "{{ item.device_raw }}"
+             number: 1
+             state: present
+          with_items: "{{ disk_list }}"
+    
+        - name: Build the filesystems
+          filesystem: 
+              fstype: xfs
+              dev: "{{ item.device_formatted }}"
+          with_items: "{{ disk_list }}"
+    
+        - name: Create Mount Points
+          file:
+              path: "{{ item.mount_point }}"
+              state: directory
+              mode: '0755'
+          with_items: "{{ disk_list }}"
+    
+        - name: Mount the new devices
+          mount:
+              path: "{{ item.mount_point }}"
+              src:  "{{ item.device_formatted }}"
+              fstype: xfs
+              state: mounted
+          with_items: "{{ disk_list }}"
+
+        - name: Change ownership of Mount Points
+          file:
+              path: "{{ item.mount_point }}"
+              state: directory
+              mode: '0755'
+              owner: postgres
+              group: postgres
+          with_items: "{{ disk_list }}"

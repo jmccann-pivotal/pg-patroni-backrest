@@ -1,0 +1,26 @@
+[{{ item.name }}]
+pg1-path={{ item.datadir_parent }}/data_{{ item.name }}
+recovery_target_timeline = '1'
+standby_mode = 'on'
+restore_command = 'pgbackrest --log-level-console=info --stanza={{ item.name }}  archive-get %f "%p"'
+ 
+[global]
+process-max=4
+#repo1-cipher-pass=zWaf6XtpjIVZC5444yXB+cgFDFl7MxGlgkZSaoPvTGirhPygu4jOKOXf9LO4vjfO
+#repo1-cipher-type=aes-256-cbc
+log-level-console=info
+log-level-file=debug
+log-path={{ item.datadir_parent }}/backups_{{ item.name }}
+repo1-path={{ item.datadir_parent }}/backups_{{ item.name }}
+repo1-retention-diff=2
+repo1-retention-full=2
+repo1-s3-bucket=<your bucket>
+repo1-s3-endpoint=s3.us-east-1.amazonaws.com
+repo1-s3-key=***
+repo1-s3-key-secret=***
+repo1-s3-region=us-east-1
+repo1-type=s3
+start-fast=y
+ 
+[global:archive-push]
+compress-level=3

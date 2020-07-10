@@ -1,0 +1,50 @@
+---
+
+- name: Create data directory parent
+  file:
+     path: "{{ item.datadir_parent }}"
+     state: directory
+     owner: postgres
+     group: postgres
+     mode: '0775'
+  loop:  "{{ postgresql_cluster }}"
+
+- name: Create data directory
+  file:
+     path:  "{{ item.datadir_parent }}/data_{{ item.name }}"
+     state: directory
+     owner: postgres
+     group: postgres
+     mode: '0700'
+  loop:  "{{ postgresql_cluster }}"
+
+- name: Create backup directory
+  file:
+     path:  "{{ item.datadir_parent }}/backups_{{ item.name }}"
+     state: directory
+     owner: postgres
+     group: postgres
+     mode: '0770'
+  loop:  "{{ postgresql_cluster }}"
+
+
+- name: reset PGDATA in postgres .bash_profile
+  become: yes
+  become_user: postgres
+  lineinfile:
+     path: /var/lib/pgsql/.bash_profile
+     regexp: '^PGDATA='
+     line: 'PGDATA="{{ item.datadir_parent }}/data_{{ item.name }}"'
+  loop: "{{ postgresql_cluster }}"
+
+- name: initialize Pivotal Postgres
+  become: yes
+  become_user: postgres
+  command: "/bin/pg_ctl initdb -D {{ item.datadir_parent }}/data_{{ item.name }}"
+  loop: "{{ postgresql_cluster }}"
+
+- name: start Pivotal Postgres
+  become: yes
+  become_user: postgres
+  command: "/bin/pg_ctl  start -D {{ item.datadir_parent }}/data_{{ item.name }}"
+  loop: "{{ postgresql_cluster }}"

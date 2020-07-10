@@ -1,0 +1,15 @@
+---
+
+- name: copy postgres package to host
+  copy:
+    src: vmware-postgres-11.7-3.el7.x86_64.rpm
+    dest: /tmp
+    owner: root
+    mode: 0754
+
+- name: Install Pivotal Postgres
+  yum:
+    name:
+      - "{{ ppg }}"
+    state: latest
+
